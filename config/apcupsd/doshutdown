@@ -1,0 +1,37 @@
+#!/bin/sh
+LOG_FILE="/var/log/apcupsd-events.log"
+
+log_event() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" >> "$LOG_FILE"
+}
+
+log_event "=== UPS 1 SHUTDOWN EVENT TRIGGERED ==="
+
+BATTERY_CHARGE_1=$(apcaccess -h 127.0.0.1:3551 -u -p BCHARGE 2>/dev/null || echo "unknown")
+TIME_LEFT_1=$(apcaccess -h 127.0.0.1:3551 -u -p TIMELEFT 2>/dev/null || echo "unknown")
+BATTERY_CHARGE_2=$(apcaccess -h 127.0.0.1:3552 -u -p BCHARGE 2>/dev/null || echo "unknown")
+TIME_LEFT_2=$(apcaccess -h 127.0.0.1:3552 -u -p TIMELEFT 2>/dev/null || echo "unknown")
+
+log_event "UPS 1 (850G2):  Battery: ${BATTERY_CHARGE_1}% | Runtime: ${TIME_LEFT_1} minutes"
+log_event "UPS 2 (1050G2): Battery: ${BATTERY_CHARGE_2}% | Runtime: ${TIME_LEFT_2} minutes"
+
+# Send SNMP trap to Synology NAS if configured
+if [ -n "$SYNOLOGY_NAS_IP" ]; then
+    log_event "Sending SNMP trap to Synology NAS at $SYNOLOGY_NAS_IP"
+    if command -v snmptrap >/dev/null 2>&1; then
+        snmptrap -v 2c -c "${SNMP_COMMUNITY:-public}" "$SYNOLOGY_NAS_IP" '' \
+            .1.3.6.1.4.1.318.0.9 \
+            .1.3.6.1.2.1.1.3.0 int 0 \
+            .1.3.6.1.2.1.1.1.0 s "UPS Battery Low" \
+            .1.3.6.1.4.1.318.1.1.1.2.2.1.0 i "${BATTERY_CHARGE}" 2>&1 | tee -a "$LOG_FILE"
+    fi
+fi
+
+# Optional: Call webhook
+if [ -n "$SHUTDOWN_WEBHOOK" ]; then
+    log_event "Calling shutdown webhook"
+    curl -s "$SHUTDOWN_WEBHOOK" >> "$LOG_FILE" 2>&1
+fi
+
+log_event "Shutdown script completed"
+exit 0

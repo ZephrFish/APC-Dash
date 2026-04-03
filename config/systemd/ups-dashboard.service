@@ -1,0 +1,19 @@
+[Unit]
+Description=UPS Network Dashboard
+Documentation=https://github.com/your-repo/rpi-snmp-ups-synology-nas
+After=network.target apcupsd.service snmpd.service
+Wants=apcupsd.service
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/ups-dashboard
+ExecStart=/usr/bin/python3 /opt/ups-dashboard/app.py
+Restart=always
+RestartSec=5
+Environment=DASHBOARD_PORT=8088
+Environment=SNMP_COMMUNITY=public
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=multi-user.target

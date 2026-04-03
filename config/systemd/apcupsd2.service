@@ -1,0 +1,13 @@
+[Unit]
+Description=UPS power management daemon (second UPS)
+After=network.target
+
+[Service]
+Type=forking
+ExecStart=/sbin/apcupsd -f /etc/apcupsd2/apcupsd.conf -P /run/apcupsd2.pid
+PIDFile=/run/apcupsd2.pid
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

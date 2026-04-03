@@ -1,0 +1,2 @@
+#!/bin/sh
+echo "[$(date)] UPS 2 (1050G2) - Power restored" >> /var/log/apcupsd-events.log

@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>UPS Network Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-dark: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent: #3b82f6;
+            --accent-light: #60a5fa;
+            --success: #22c55e;
+            --warning: #eab308;
+            --danger: #ef4444;
+            --border: #334155;
+            --ups1-color: #3b82f6;
+            --ups2-color: #8b5cf6;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Inter', sans-serif;
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        .nav {
+            background: var(--bg-card);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .nav-title {
+            font-size: 20px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-title svg {
+            width: 28px;
+            height: 28px;
+            color: var(--accent);
+        }
+
+        .nav-status {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .status-pill {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .status-pill.online {
+            background: rgba(34, 197, 94, 0.15);
+            color: var(--success);
+        }
+
+        .status-pill.offline {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--danger);
+        }
+
+        .status-pill.warning {
+            background: rgba(234, 179, 8, 0.15);
+            color: var(--warning);
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .tab {
+            padding: 10px 20px;
+            border-radius: 8px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .tab:hover {
+            background: var(--bg-card-hover);
+            color: var(--text-primary);
+        }
+
+        .tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .ups-section {
+            margin-bottom: 32px;
+        }
+
+        .ups-section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .ups-label {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .ups-model-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .ups-color-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .card-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+        }
+
+        .card-icon {
+            width: 18px;
+            height: 18px;
+            color: var(--accent);
+        }
+
+        .card-value {
+            font-size: 36px;
+            font-weight: 700;
+            line-height: 1;
+        }
+
+        .card-unit {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-secondary);
+            margin-left: 4px;
+        }
+
+        .card-sub {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 6px;
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--border);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease, background 0.3s;
+        }
+
+        .chart-card {
+            grid-column: span 2;
+        }
+
+        @media (max-width: 768px) {
+            .chart-card {
+                grid-column: span 1;
+            }
+        }
+
+        .chart-container {
+            height: 180px;
+            margin-top: 12px;
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .info-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 14px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .info-label {
+            color: var(--text-secondary);
+            font-size: 13px;
+        }
+
+        .info-value {
+            font-weight: 500;
+            font-size: 14px;
+        }
+
+        .service-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+        }
+
+        .service-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px;
+            background: var(--bg-card);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .service-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .service-status.running {
+            background: var(--success);
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        .service-status.stopped {
+            background: var(--danger);
+        }
+
+        .service-name {
+            font-weight: 500;
+        }
+
+        .snmp-input {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .input-group label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group input {
+            padding: 10px 14px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: var(--bg-dark);
+            color: var(--text-primary);
+            font-size: 14px;
+            width: 180px;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-light);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+        }
+
+        .last-updated {
+            text-align: center;
+            color: var(--text-secondary);
+            font-size: 12px;
+            padding: 20px;
+        }
+
+        .loading {
+            opacity: 0.5;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .pulse {
+            animation: pulse 1.5s infinite;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .section-title svg {
+            width: 20px;
+            height: 20px;
+            color: var(--accent);
+        }
+
+        /* Combined power summary */
+        .power-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .power-summary .card {
+            text-align: center;
+        }
+
+        .power-summary .card-value {
+            font-size: 28px;
+        }
+
+        .outlet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 10px;
+            margin-top: 12px;
+        }
+
+        .outlet-item {
+            padding: 12px;
+            background: rgba(255,255,255,0.02);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            text-align: center;
+        }
+
+        .outlet-label {
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .outlet-value {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .outlet-status {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 4px;
+        }
+
+        .history-ups-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .history-ups-tab {
+            padding: 6px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            background: var(--bg-card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.2s;
+        }
+
+        .history-ups-tab:hover {
+            color: var(--text-primary);
+        }
+
+        .history-ups-tab.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .detail-toggle {
+            font-size: 13px;
+            color: var(--accent-light);
+            cursor: pointer;
+            margin-left: auto;
+            user-select: none;
+        }
+
+        .detail-toggle:hover {
+            text-decoration: underline;
+        }
+
+        .details-panel {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .details-panel.collapsed {
+            max-height: 0;
+        }
+
+        .details-panel.expanded {
+            max-height: 800px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="nav">
+        <div class="nav-title">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            UPS Network Dashboard
+        </div>
+        <div class="nav-status" id="nav-status-pills">
+            <!-- Status pills injected by JS -->
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="tabs">
+            <button class="tab active" data-tab="overview">Overview</button>
+            <button class="tab" data-tab="network">Network</button>
+            <button class="tab" data-tab="history">History</button>
+        </div>
+
+        <!-- Overview Tab -->
+        <div id="tab-overview" class="tab-content active">
+            <!-- Power summary across both UPSes -->
+            <div class="power-summary" id="power-summary">
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 8px;">Total Capacity</div>
+                    <div class="card-value" id="total-capacity">--<span class="card-unit">W</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 8px;">Total Draw</div>
+                    <div class="card-value" id="total-draw">--<span class="card-unit">W</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 8px;">Total Load</div>
+                    <div class="card-value" id="total-load">--<span class="card-unit">%</span></div>
+                </div>
+                <div class="card">
+                    <div class="card-title" style="margin-bottom: 8px;">Units Online</div>
+                    <div class="card-value" id="units-online">--<span class="card-unit">/ --</span></div>
+                </div>
+            </div>
+
+            <!-- UPS sections are injected dynamically -->
+            <div id="ups-panels"></div>
+        </div>
+
+        <!-- Network Tab -->
+        <div id="tab-network" class="tab-content">
+            <div class="card" style="margin-bottom: 20px;">
+                <div class="section-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                    </svg>
+                    Service Status
+                </div>
+                <div class="service-grid" id="service-grid">
+                    <div class="service-item">
+                        <div class="service-status" id="svc-apcupsd"></div>
+                        <span class="service-name">apcupsd</span>
+                    </div>
+                    <div class="service-item">
+                        <div class="service-status" id="svc-apcupsd2"></div>
+                        <span class="service-name">apcupsd2</span>
+                    </div>
+                    <div class="service-item">
+                        <div class="service-status" id="svc-snmpd"></div>
+                        <span class="service-name">snmpd</span>
+                    </div>
+                    <div class="service-item">
+                        <div class="service-status" id="svc-snmp-responding"></div>
+                        <span class="service-name">SNMP Responding</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="section-title">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                    Query Remote UPS via SNMP
+                </div>
+                <div class="snmp-input">
+                    <div class="input-group">
+                        <label>Host IP</label>
+                        <input type="text" id="snmp-host" placeholder="192.168.1.100" value="127.0.0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Community</label>
+                        <input type="text" id="snmp-community" placeholder="public" value="public">
+                    </div>
+                    <button class="btn btn-primary" onclick="queryRemoteUPS()" style="align-self: flex-end;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                        </svg>
+                        Query
+                    </button>
+                </div>
+                <div id="remote-ups-result"></div>
+            </div>
+        </div>
+
+        <!-- History Tab -->
+        <div id="tab-history" class="tab-content">
+            <div class="history-ups-tabs" id="history-ups-tabs">
+                <!-- Injected by JS -->
+            </div>
+            <div class="grid">
+                <div class="card chart-card">
+                    <div class="section-title">Battery Charge History</div>
+                    <div class="chart-container">
+                        <canvas id="battery-chart"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-card">
+                    <div class="section-title">Load History</div>
+                    <div class="chart-container">
+                        <canvas id="load-chart"></canvas>
+                    </div>
+                </div>
+                <div class="card chart-card">
+                    <div class="section-title">Input Voltage History</div>
+                    <div class="chart-container">
+                        <canvas id="voltage-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="last-updated">
+            Last updated: <span id="last-update">--</span> | Refresh every 5 seconds
+        </div>
+    </div>
+
+    <script>
+        // UPS data cache
+        const upsData = {};
+        const upsColors = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316'];
+        let selectedHistoryUps = 'ups1';
+
+        // Charts
+        let batteryChart, loadChart, voltageChart;
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                x: { display: false },
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#94a3b8' }
+                }
+            },
+            elements: {
+                point: { radius: 0 },
+                line: { tension: 0.3 }
+            }
+        };
+
+        function initCharts() {
+            batteryChart = new Chart(document.getElementById('battery-chart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#22c55e',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, max: 100 } } }
+            });
+
+            loadChart = new Chart(document.getElementById('load-chart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: { ...chartOptions, scales: { ...chartOptions.scales, y: { ...chartOptions.scales.y, max: 100 } } }
+            });
+
+            voltageChart = new Chart(document.getElementById('voltage-chart'), {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#eab308',
+                        backgroundColor: 'rgba(234, 179, 8, 0.1)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+
+        // Tab handling
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                tab.classList.add('active');
+                document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+            });
+        });
+
+        function getValue(value, defaultVal = '--') {
+            if (value === null || value === undefined || value === 'Unknown') return defaultVal;
+            return value;
+        }
+
+        function getPercentageColor(percent) {
+            if (percent > 50) return 'var(--success)';
+            if (percent > 20) return 'var(--warning)';
+            return 'var(--danger)';
+        }
+
+        function getLoadColor(percent) {
+            if (percent < 60) return 'var(--accent)';
+            if (percent < 85) return 'var(--warning)';
+            return 'var(--danger)';
+        }
+
+        function getStatusClass(status) {
+            if (!status) return 'offline';
+            if (status.includes('ONBATT')) return 'warning';
+            if (status.includes('ONLINE')) return 'online';
+            return 'offline';
+        }
+
+        function parseWatts(nomPower) {
+            if (!nomPower || nomPower === 'Unknown') return 0;
+            return parseInt(nomPower.toString().replace(/[^0-9]/g, '')) || 0;
+        }
+
+        function parseMinutes(timeLeft) {
+            if (!timeLeft || timeLeft === 'Unknown') return 0;
+            const m = timeLeft.toString().match(/([\d.]+)/);
+            return m ? parseFloat(m[1]) : 0;
+        }
+
+        function buildUpsPanel(unit, idx) {
+            const ups = unit.ups;
+            const color = upsColors[idx % upsColors.length];
+            const battery = parseInt(ups.battery_charge) || 0;
+            const load = parseInt(ups.load_percent) || 0;
+            const nomPower = parseWatts(ups.nom_power);
+            const drawW = nomPower > 0 ? Math.round(nomPower * load / 100) : 0;
+            const timeLeft = getValue(ups.time_left);
+            const timeParts = timeLeft.match(/([\d.]+)/);
+            const timeDisplay = timeParts ? parseFloat(timeParts[1]).toFixed(1) : timeLeft;
+            const voltage = getValue(ups.input_voltage);
+            const voltageParts = voltage.match(/([\d.]+)/);
+            const voltageDisplay = voltageParts ? parseFloat(voltageParts[1]).toFixed(1) : voltage;
+
+            return `
+                <div class="ups-section" id="ups-section-${unit.id}">
+                    <div class="ups-section-header">
+                        <div class="ups-color-dot" style="background: ${color}"></div>
+                        <span class="ups-label">${unit.name}</span>
+                        <span class="ups-model-label">${getValue(ups.model)}</span>
+                        <div class="status-pill ${getStatusClass(ups.status)}" style="margin-left: 12px;">
+                            <span class="status-dot"></span>
+                            <span>${getValue(ups.status)}</span>
+                        </div>
+                        <span class="detail-toggle" onclick="toggleDetails('${unit.id}')" id="toggle-${unit.id}">Show details</span>
+                    </div>
+                    <div class="grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Battery</span>
+                            </div>
+                            <div class="card-value">${battery}<span class="card-unit">%</span></div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${battery}%; background: ${getPercentageColor(battery)}"></div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Runtime</span>
+                            </div>
+                            <div class="card-value">${timeDisplay}<span class="card-unit">min</span></div>
+                            <div class="card-sub" style="margin-top: 8px; line-height: 1.4;">Estimated battery time remaining if mains power is lost, based on current load</div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Load</span>
+                            </div>
+                            <div class="card-value">${load}<span class="card-unit">%</span></div>
+                            <div class="card-sub">${drawW > 0 ? drawW + 'W / ' + nomPower + 'W' : ''}</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${load}%; background: ${getLoadColor(load)}"></div>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <span class="card-title">Input Voltage</span>
+                            </div>
+                            <div class="card-value">${voltageDisplay}<span class="card-unit">V</span></div>
+                        </div>
+                    </div>
+
+                    <div class="details-panel collapsed" id="details-${unit.id}">
+                        <div class="card">
+                            <div class="section-title">
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                Device Details
+                            </div>
+                            <div class="info-grid">
+                                <div class="info-item">
+                                    <span class="info-label">Model</span>
+                                    <span class="info-value">${getValue(ups.model)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">UPS Name</span>
+                                    <span class="info-value">${getValue(ups.upsname)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Status</span>
+                                    <span class="info-value">${getValue(ups.status)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Nominal Power</span>
+                                    <span class="info-value">${getValue(ups.nom_power)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Current Draw</span>
+                                    <span class="info-value">${drawW > 0 ? drawW + ' W' : '--'}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Battery Voltage</span>
+                                    <span class="info-value">${getValue(ups.battery_voltage)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Battery Temperature</span>
+                                    <span class="info-value">${getValue(ups.battery_temperature)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Output Voltage</span>
+                                    <span class="info-value">${getValue(ups.output_voltage)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Input Frequency</span>
+                                    <span class="info-value">${getValue(ups.input_frequency)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Last Transfer</span>
+                                    <span class="info-value">${getValue(ups.last_transfer)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Battery Date</span>
+                                    <span class="info-value">${getValue(ups.battery_date)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Serial Number</span>
+                                    <span class="info-value">${getValue(ups.serial_number)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Firmware</span>
+                                    <span class="info-value">${getValue(ups.firmware)}</span>
+                                </div>
+                                <div class="info-item">
+                                    <span class="info-label">Self Test</span>
+                                    <span class="info-value">${getValue(ups.selftest)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Track which details are expanded
+        const expandedDetails = {};
+        function toggleDetails(upsId) {
+            const panel = document.getElementById('details-' + upsId);
+            const toggle = document.getElementById('toggle-' + upsId);
+            if (panel.classList.contains('collapsed')) {
+                panel.classList.remove('collapsed');
+                panel.classList.add('expanded');
+                toggle.textContent = 'Hide details';
+                expandedDetails[upsId] = true;
+            } else {
+                panel.classList.remove('expanded');
+                panel.classList.add('collapsed');
+                toggle.textContent = 'Show details';
+                expandedDetails[upsId] = false;
+            }
+        }
+
+        function updateNavPills(units) {
+            const container = document.getElementById('nav-status-pills');
+            container.innerHTML = units.map((u, i) => {
+                const cls = u.success ? getStatusClass(u.ups?.status) : 'offline';
+                const label = u.success ? (u.ups.status?.includes('ONBATT') ? 'Battery' : 'Online') : 'Offline';
+                return `
+                    <div class="status-pill ${cls}">
+                        <span class="status-dot"></span>
+                        <span>${u.name}: ${label}</span>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function updatePowerSummary(units) {
+            let totalCap = 0, totalDraw = 0, onlineCount = 0;
+            const total = units.length;
+
+            units.forEach(u => {
+                if (u.success && u.ups) {
+                    const nom = parseWatts(u.ups.nom_power);
+                    const load = parseInt(u.ups.load_percent) || 0;
+                    totalCap += nom;
+                    totalDraw += Math.round(nom * load / 100);
+                    if (u.ups.status && u.ups.status.includes('ONLINE')) onlineCount++;
+                }
+            });
+
+            const totalLoadPct = totalCap > 0 ? Math.round(totalDraw / totalCap * 100) : 0;
+            document.getElementById('total-capacity').innerHTML = `${totalCap}<span class="card-unit">W</span>`;
+            document.getElementById('total-draw').innerHTML = `${totalDraw}<span class="card-unit">W</span>`;
+            document.getElementById('total-load').innerHTML = `${totalLoadPct}<span class="card-unit">%</span>`;
+            document.getElementById('units-online').innerHTML = `${onlineCount}<span class="card-unit">/ ${total}</span>`;
+        }
+
+        async function fetchStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+
+                if (data.success && data.units) {
+                    const units = data.units;
+
+                    updateNavPills(units);
+                    updatePowerSummary(units);
+
+                    const panelsDiv = document.getElementById('ups-panels');
+                    panelsDiv.innerHTML = units.map((u, i) => {
+                        if (u.success && u.ups) {
+                            return buildUpsPanel(u, i);
+                        } else {
+                            return `
+                                <div class="ups-section">
+                                    <div class="ups-section-header">
+                                        <div class="ups-color-dot" style="background: ${upsColors[i % upsColors.length]}"></div>
+                                        <span class="ups-label">${u.name}</span>
+                                        <div class="status-pill offline" style="margin-left: 12px;">
+                                            <span class="status-dot"></span>
+                                            <span>Offline</span>
+                                        </div>
+                                    </div>
+                                    <div class="card" style="text-align: center; padding: 40px; color: var(--text-secondary);">
+                                        ${u.error || 'Unable to communicate with UPS'}
+                                    </div>
+                                </div>
+                            `;
+                        }
+                    }).join('');
+
+                    // Restore expanded details
+                    Object.keys(expandedDetails).forEach(id => {
+                        if (expandedDetails[id]) {
+                            const panel = document.getElementById('details-' + id);
+                            const toggle = document.getElementById('toggle-' + id);
+                            if (panel) {
+                                panel.classList.remove('collapsed');
+                                panel.classList.add('expanded');
+                                toggle.textContent = 'Hide details';
+                            }
+                        }
+                    });
+
+                    // Build history tabs if not done
+                    buildHistoryTabs(units);
+
+                    document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+                }
+            } catch (error) {
+                console.error('Error fetching status:', error);
+            }
+        }
+
+        let historyTabsBuilt = false;
+        function buildHistoryTabs(units) {
+            if (historyTabsBuilt) return;
+            historyTabsBuilt = true;
+            const container = document.getElementById('history-ups-tabs');
+            container.innerHTML = units.map((u, i) => `
+                <button class="history-ups-tab ${u.id === selectedHistoryUps ? 'active' : ''}"
+                        data-ups="${u.id}" onclick="selectHistoryUps('${u.id}')">
+                    ${u.name}${u.success && u.ups ? ' (' + u.ups.model + ')' : ''}
+                </button>
+            `).join('');
+        }
+
+        function selectHistoryUps(upsId) {
+            selectedHistoryUps = upsId;
+            document.querySelectorAll('.history-ups-tab').forEach(t => {
+                t.classList.toggle('active', t.dataset.ups === upsId);
+            });
+            fetchHistory();
+        }
+
+        async function fetchNetworkStatus() {
+            try {
+                const host = document.getElementById('snmp-host')?.value || '127.0.0.1';
+                const community = document.getElementById('snmp-community')?.value || 'public';
+                const response = await fetch(`/api/network-check?host=${host}&community=${community}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const checks = data.checks;
+                    setServiceStatus('svc-apcupsd', checks.apcupsd_running);
+                    setServiceStatus('svc-apcupsd2', checks.apcupsd2_service);
+                    setServiceStatus('svc-snmpd', checks.snmpd_running);
+                    setServiceStatus('svc-snmp-responding', checks.snmp_responding);
+                }
+            } catch (error) {
+                console.error('Error fetching network status:', error);
+            }
+        }
+
+        function setServiceStatus(id, running) {
+            const el = document.getElementById(id);
+            if (el) el.className = 'service-status ' + (running ? 'running' : 'stopped');
+        }
+
+        async function fetchHistory() {
+            try {
+                const response = await fetch(`/api/history?ups=${selectedHistoryUps}`);
+                const data = await response.json();
+
+                if (data.success) {
+                    const labels = data.timestamps.map(t => new Date(t).toLocaleTimeString());
+
+                    batteryChart.data.labels = labels;
+                    batteryChart.data.datasets[0].data = data.battery_charge;
+                    batteryChart.update('none');
+
+                    loadChart.data.labels = labels;
+                    loadChart.data.datasets[0].data = data.load_percent;
+                    loadChart.update('none');
+
+                    voltageChart.data.labels = labels;
+                    voltageChart.data.datasets[0].data = data.input_voltage;
+                    voltageChart.update('none');
+                }
+            } catch (error) {
+                console.error('Error fetching history:', error);
+            }
+        }
+
+        async function queryRemoteUPS() {
+            const host = document.getElementById('snmp-host').value;
+            const community = document.getElementById('snmp-community').value;
+            const resultDiv = document.getElementById('remote-ups-result');
+
+            resultDiv.innerHTML = '<div class="pulse">Querying...</div>';
+
+            try {
+                const response = await fetch(`/api/snmp-status?host=${host}&community=${community}`);
+                const data = await response.json();
+
+                if (data.success && data.ups) {
+                    const ups = data.ups;
+                    resultDiv.innerHTML = `
+                        <div class="info-grid" style="margin-top: 16px;">
+                            <div class="info-item"><span class="info-label">Host</span><span class="info-value" style="color: var(--accent-light)">${host}</span></div>
+                            <div class="info-item"><span class="info-label">Model</span><span class="info-value">${getValue(ups.model)}</span></div>
+                            <div class="info-item"><span class="info-label">Battery</span><span class="info-value">${getValue(ups.battery_charge)}%</span></div>
+                            <div class="info-item"><span class="info-label">Load</span><span class="info-value">${getValue(ups.load_percent)}%</span></div>
+                            <div class="info-item"><span class="info-label">Input Voltage</span><span class="info-value">${getValue(ups.input_voltage)}V</span></div>
+                            <div class="info-item"><span class="info-label">Runtime</span><span class="info-value">${getValue(ups.time_left)}</span></div>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `<div style="color: var(--danger); padding: 16px;">Error: ${data.error || 'Could not connect'}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div style="color: var(--danger); padding: 16px;">Error: ${error.message}</div>`;
+            }
+        }
+
+        // Initialize
+        initCharts();
+        fetchStatus();
+        fetchNetworkStatus();
+        fetchHistory();
+
+        // Refresh intervals
+        setInterval(fetchStatus, 5000);
+        setInterval(fetchNetworkStatus, 10000);
+        setInterval(fetchHistory, 5000);
+    </script>
+</body>
+</html>
