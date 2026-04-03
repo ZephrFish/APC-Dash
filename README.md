@@ -2,7 +2,8 @@
 
 A lightweight web dashboard for monitoring multiple APC UPS units via `apcupsd`. Built with Flask and vanilla JS.
 
-![Dashboard Screenshot](screenshot.png)
+<img width="1510" height="793" alt="image" src="https://github.com/user-attachments/assets/e674800b-4539-4731-9419-836cfaa3c0c3" />
+
 
 ## What It Shows
 
